@@ -1,0 +1,9 @@
+dist
+node_modules
+.env
+*.log
+.DS_Store
+src
+tsconfig.json
+.vscode
+.idea
