@@ -9,7 +9,7 @@ import {
 import mysql, { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 
 // ---------------------------------------------------------------------------
-// Types
+// 类型定义
 // ---------------------------------------------------------------------------
 interface DatasourceConfig {
   host: string;
@@ -20,8 +20,8 @@ interface DatasourceConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Default datasource (backward compatible)
-// Named "test" so the default environment variables act as the test database.
+// 默认数据源（向后兼容）
+// 命名为 "test"，这样默认的环境变量就相当于 test 数据库的配置。
 // ---------------------------------------------------------------------------
 const defaultConfig: DatasourceConfig = {
   host: process.env.MYSQL_HOST || "localhost",
@@ -32,8 +32,8 @@ const defaultConfig: DatasourceConfig = {
 };
 
 // ---------------------------------------------------------------------------
-// Multi-datasource configuration
-// Example:
+// 多数据源配置
+// 示例：
 // MYSQL_DATASOURCES='{"uat":{"host":"uat.db","port":3306,"user":"app","password":"xxx","database":"uat_db"}}'
 // ---------------------------------------------------------------------------
 const datasources: Map<string, DatasourceConfig> = new Map();
@@ -43,7 +43,7 @@ if (process.env.MYSQL_DATASOURCES) {
   try {
     const parsed = JSON.parse(process.env.MYSQL_DATASOURCES) as Record<string, Partial<DatasourceConfig>>;
     for (const [name, cfg] of Object.entries(parsed)) {
-      if (name === "test") continue; // reserved for the default config
+      if (name === "test") continue; // "test" 保留给默认配置
       datasources.set(name, {
         host: cfg.host || defaultConfig.host,
         port: cfg.port || defaultConfig.port,
@@ -53,13 +53,13 @@ if (process.env.MYSQL_DATASOURCES) {
       });
     }
   } catch (err) {
-    console.error("Failed to parse MYSQL_DATASOURCES:", err);
+    console.error("解析 MYSQL_DATASOURCES 失败:", err);
     process.exit(1);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Permission control
+// 权限控制
 // ---------------------------------------------------------------------------
 const allowedOperations = new Set(
   (process.env.MYSQL_ALLOWED_OPERATIONS || "select,insert,update,explain,create,alter")
@@ -69,14 +69,14 @@ const allowedOperations = new Set(
 );
 
 // ---------------------------------------------------------------------------
-// Helpers
+// 辅助函数
 // ---------------------------------------------------------------------------
 function getDatasource(name?: string): DatasourceConfig {
   const key = name || "test";
   const ds = datasources.get(key);
   if (!ds) {
     throw new Error(
-      `Unknown datasource '${key}'. Available datasources: ${Array.from(datasources.keys()).join(", ")}`
+      `未知数据源 '${key}'。可用数据源：${Array.from(datasources.keys()).join(", ")}`
     );
   }
   return ds;
@@ -96,11 +96,11 @@ function getPool(datasource?: string, database?: string) {
 
 function sanitizeIdentifier(name: string): string {
   if (!name || typeof name !== "string") {
-    throw new Error("Identifier must be a non-empty string");
+    throw new Error("标识符必须是非空字符串");
   }
   const stripped = name.replace(/^`/, "").replace(/`$/, "");
   if (!/^[a-zA-Z0-9_]+$/.test(stripped)) {
-    throw new Error(`Invalid identifier: ${name}`);
+    throw new Error(`非法标识符：${name}`);
   }
   return `\`${stripped}\``;
 }
@@ -108,7 +108,7 @@ function sanitizeIdentifier(name: string): string {
 function checkOperation(operation: string): void {
   if (!allowedOperations.has(operation.toLowerCase())) {
     throw new Error(
-      `Operation '${operation}' is not allowed. Allowed operations: ${Array.from(allowedOperations).join(", ")}`
+      `操作 '${operation}' 未被允许。允许的操作：${Array.from(allowedOperations).join(", ")}`
     );
   }
 }
@@ -144,21 +144,21 @@ function detectSqlOperation(sql: string): string {
 
 const datasourceProperty = {
   type: "string",
-  description: "Datasource name. Uses 'test' if omitted.",
+  description: "数据源名称。如果省略，则使用 'test'。",
 };
 
 // ---------------------------------------------------------------------------
-// Tool definitions
+// 工具定义
 // ---------------------------------------------------------------------------
 const TOOLS = [
   {
     name: "mysql_query",
-    description: "Execute a read-only SELECT, SHOW, or EXPLAIN query and return JSON results.",
+    description: "执行只读的 SELECT、SHOW 或 EXPLAIN 查询，并返回 JSON 结果。",
     inputSchema: {
       type: "object",
       properties: {
-        sql: { type: "string", description: "A SELECT, SHOW, or EXPLAIN SQL statement" },
-        database: { type: "string", description: "Optional database name" },
+        sql: { type: "string", description: "一条 SELECT、SHOW 或 EXPLAIN SQL 语句" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
       required: ["sql"],
@@ -166,12 +166,12 @@ const TOOLS = [
   },
   {
     name: "mysql_execute",
-    description: "Execute a write SQL statement (INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, etc.).",
+    description: "执行写入型 SQL 语句（INSERT、UPDATE、DELETE、CREATE、DROP、ALTER 等）。",
     inputSchema: {
       type: "object",
       properties: {
-        sql: { type: "string", description: "A SQL statement" },
-        database: { type: "string", description: "Optional database name" },
+        sql: { type: "string", description: "一条 SQL 语句" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
       required: ["sql"],
@@ -179,23 +179,23 @@ const TOOLS = [
   },
   {
     name: "mysql_list_tables",
-    description: "List all tables in the current or specified database.",
+    description: "列出当前或指定数据库中的所有表。",
     inputSchema: {
       type: "object",
       properties: {
-        database: { type: "string", description: "Optional database name" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
     },
   },
   {
     name: "mysql_describe_table",
-    description: "Show the structure of a table.",
+    description: "查看表结构。",
     inputSchema: {
       type: "object",
       properties: {
-        table: { type: "string", description: "Table name" },
-        database: { type: "string", description: "Optional database name" },
+        table: { type: "string", description: "表名" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
       required: ["table"],
@@ -203,17 +203,17 @@ const TOOLS = [
   },
   {
     name: "mysql_create_table",
-    description: "Create a new table from a column definition object.",
+    description: "根据列定义对象创建新表。",
     inputSchema: {
       type: "object",
       properties: {
-        table: { type: "string", description: "Table name" },
+        table: { type: "string", description: "表名" },
         columns: {
           type: "object",
-          description: "Map of column name to column definition",
+          description: "列名到列定义的映射",
           additionalProperties: { type: "string" },
         },
-        database: { type: "string", description: "Optional database name" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
       required: ["table", "columns"],
@@ -221,17 +221,17 @@ const TOOLS = [
   },
   {
     name: "mysql_insert",
-    description: "Insert a single row into a table.",
+    description: "向表中插入单行数据。",
     inputSchema: {
       type: "object",
       properties: {
-        table: { type: "string", description: "Table name" },
+        table: { type: "string", description: "表名" },
         data: {
           type: "object",
-          description: "Column-value pairs",
+          description: "列值对",
           additionalProperties: {},
         },
-        database: { type: "string", description: "Optional database name" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
       required: ["table", "data"],
@@ -239,18 +239,18 @@ const TOOLS = [
   },
   {
     name: "mysql_update",
-    description: "Update rows in a table.",
+    description: "更新表中的数据。",
     inputSchema: {
       type: "object",
       properties: {
-        table: { type: "string", description: "Table name" },
+        table: { type: "string", description: "表名" },
         data: {
           type: "object",
-          description: "Column-value pairs to update",
+          description: "要更新的列值对",
           additionalProperties: {},
         },
-        where: { type: "string", description: "WHERE clause" },
-        database: { type: "string", description: "Optional database name" },
+        where: { type: "string", description: "WHERE 子句" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
       required: ["table", "data", "where"],
@@ -258,13 +258,13 @@ const TOOLS = [
   },
   {
     name: "mysql_delete",
-    description: "Delete rows from a table.",
+    description: "删除表中的数据。",
     inputSchema: {
       type: "object",
       properties: {
-        table: { type: "string", description: "Table name" },
-        where: { type: "string", description: "WHERE clause" },
-        database: { type: "string", description: "Optional database name" },
+        table: { type: "string", description: "表名" },
+        where: { type: "string", description: "WHERE 子句" },
+        database: { type: "string", description: "可选的数据库名称" },
         datasource: datasourceProperty,
       },
       required: ["table", "where"],
@@ -272,7 +272,7 @@ const TOOLS = [
   },
   {
     name: "mysql_list_datasources",
-    description: "List all configured datasource names and their hosts (passwords hidden).",
+    description: "列出所有已配置的数据源名称及其主机信息（密码隐藏）。",
     inputSchema: {
       type: "object",
     },
@@ -280,7 +280,7 @@ const TOOLS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Server setup
+// 服务端初始化
 // ---------------------------------------------------------------------------
 const server = new Server(
   {
@@ -312,7 +312,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             content: [
               {
                 type: "text",
-                text: JSON.stringify({ error: "Only SELECT / SHOW / EXPLAIN queries are allowed with mysql_query. Use mysql_execute for writes." }),
+                text: JSON.stringify({ error: "mysql_query 只允许 SELECT / SHOW / EXPLAIN 查询，写入操作请使用 mysql_execute。" }),
               },
             ],
           };
@@ -348,7 +348,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 {
                   affected_rows: result.affectedRows,
                   last_insert_id: result.insertId,
-                  message: "OK",
+                  message: "执行成功",
                 },
                 null,
                 2
@@ -400,7 +400,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const table = String(args?.table || "");
         const columns = args?.columns as Record<string, string>;
         if (!columns || Object.keys(columns).length === 0) {
-          throw new Error("columns cannot be empty");
+          throw new Error("columns 不能为空");
         }
         const parts = Object.entries(columns).map(
           ([col, def]) => `${sanitizeIdentifier(col)} ${def}`
@@ -414,7 +414,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify(
-                { affected_rows: result.affectedRows, message: "OK" },
+                { affected_rows: result.affectedRows, message: "建表成功" },
                 null,
                 2
               ),
@@ -428,7 +428,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const table = String(args?.table || "");
         const data = args?.data as Record<string, unknown>;
         if (!data || Object.keys(data).length === 0) {
-          throw new Error("data cannot be empty");
+          throw new Error("data 不能为空");
         }
         const columns = Object.keys(data).map(sanitizeIdentifier);
         const placeholders = Object.keys(data).map(() => "?").join(", ");
@@ -444,7 +444,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 {
                   affected_rows: result.affectedRows,
                   last_insert_id: result.insertId,
-                  message: "Inserted successfully",
+                  message: "插入成功",
                 },
                 null,
                 2
@@ -460,10 +460,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const data = args?.data as Record<string, unknown>;
         const where = String(args?.where || "");
         if (!data || Object.keys(data).length === 0) {
-          throw new Error("data cannot be empty");
+          throw new Error("data 不能为空");
         }
         if (!where) {
-          throw new Error("where clause is required");
+          throw new Error("必须提供 where 子句");
         }
         const setClause = Object.keys(data)
           .map((c) => `${sanitizeIdentifier(c)} = ?`)
@@ -477,7 +477,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify(
-                { affected_rows: result.affectedRows, message: "Updated successfully" },
+                { affected_rows: result.affectedRows, message: "更新成功" },
                 null,
                 2
               ),
@@ -491,7 +491,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const table = String(args?.table || "");
         const where = String(args?.where || "");
         if (!where) {
-          throw new Error("where clause is required");
+          throw new Error("必须提供 where 子句");
         }
         const sql = `DELETE FROM ${sanitizeIdentifier(table)} WHERE ${where}`;
         const pool = getPool(args?.datasource as string | undefined, args?.database as string | undefined);
@@ -502,7 +502,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify(
-                { affected_rows: result.affectedRows, message: "Deleted successfully" },
+                { affected_rows: result.affectedRows, message: "删除成功" },
                 null,
                 2
               ),
@@ -530,7 +530,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       default:
-        throw new Error(`Unknown tool: ${name}`);
+        throw new Error(`未知工具：${name}`);
     }
   } catch (error: any) {
     return {
@@ -546,7 +546,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // ---------------------------------------------------------------------------
-// Start server
+// 启动服务
 // ---------------------------------------------------------------------------
 async function main() {
   const transport = new StdioServerTransport();
@@ -554,6 +554,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("Fatal error:", error);
+  console.error("致命错误：", error);
   process.exit(1);
 });
