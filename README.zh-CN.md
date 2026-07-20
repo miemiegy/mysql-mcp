@@ -2,6 +2,8 @@
 
 [English](README.md)
 
+[![GitHub](https://img.shields.io/badge/GitHub-miemiegy%2Fmysql--mcp-181717?logo=github)](https://github.com/miemiegy/mysql-mcp)
+
 一个基于 Model Context Protocol（MCP）的服务端，把 MySQL 操作封装成可用的工具。
 
 ## 功能特性

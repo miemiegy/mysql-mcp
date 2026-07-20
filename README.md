@@ -2,6 +2,8 @@
 
 [中文文档](README.zh-CN.md)
 
+[![GitHub](https://img.shields.io/badge/GitHub-miemiegy%2Fmysql--mcp-181717?logo=github)](https://github.com/miemiegy/mysql-mcp)
+
 A Model Context Protocol (MCP) server that exposes MySQL operations as tools.
 
 ## Features
